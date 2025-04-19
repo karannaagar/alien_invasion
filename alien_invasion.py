@@ -9,6 +9,10 @@ from bullet import Bullet
 
 from alien import Alien
 
+from time import sleep
+
+from game_stats import GameStats
+
 class AlienInvasion:
     """overall class to manage game behaviour and assets"""
 
@@ -31,6 +35,9 @@ class AlienInvasion:
         self._create_fleet()
 
 
+        self.stats = GameStats(self)
+
+
         
 
     def run_game(self):
@@ -39,9 +46,11 @@ class AlienInvasion:
         while True:
             
             self._check_events()
-            self.ship.update()
-            self._update_bullets()
-            self._update_aliens()
+
+            if self.stats.game_active:
+                self.ship.update()
+                self._update_bullets()
+                self._update_aliens()
             self._update_screen()
 
 
@@ -62,6 +71,15 @@ class AlienInvasion:
             self._create_fleet()
 
 
+
+    def _check_aliens_bottom(self):
+        """Check if any aliens have reached the bottom of the screen."""
+        screen_rect = self.screen.get_rect()
+        for alien in self.aliens.sprites():
+            if alien.rect.bottom >= screen_rect.bottom:
+                # Treat this the same as if the ship got hit.
+                self._ship_hit()
+                break
 
 
     def _check_events(self):
@@ -142,8 +160,30 @@ class AlienInvasion:
 
 
     def _update_aliens(self):
-         self._check_fleet_edges()
-         self.aliens.update()
+        self._check_fleet_edges()
+        self.aliens.update()
+
+        if pygame.sprite.spritecollideany(self.ship, self.aliens):
+            self._ship_hit()
+
+        self._check_aliens_bottom()
+
+    def _ship_hit(self):
+            # Decrement ships_left.
+        if self.stats.ships_left > 0:
+            self.stats.ships_left -= 1
+            # Get rid of any remaining aliens and bullets.
+            self.aliens.empty()
+            self.bullets.empty()
+            # Create a new fleet and center the ship.
+            self._create_fleet()
+            self.ship.center_ship()
+            # Pause.
+            sleep(0.5)
+        else:
+            self.stats.game_active = False
+            # Look for aliens hitting the bottom of the screen.
+
 
     def _update_screen(self):
             self.screen.fill(self.settings.bg_color)
